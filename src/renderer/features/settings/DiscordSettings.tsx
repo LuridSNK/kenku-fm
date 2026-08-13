@@ -12,6 +12,7 @@ import Link from "@mui/material/Link";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import AddIcon from "@mui/icons-material/AddRounded";
 import DeleteIcon from "@mui/icons-material/DeleteRounded";
@@ -129,8 +130,8 @@ export function DiscordSettings() {
   const [editorProfile, setEditorProfile] = useState<
     DiscordProfile | null
   >();
-
-
+  const [profileToDelete, setProfileToDelete] =
+    useState<DiscordProfile | null>(null);
   function handleSave(profile: DiscordProfile) {
     dispatch(
       editorProfile
@@ -141,12 +142,11 @@ export function DiscordSettings() {
   }
 
   function handleDelete() {
-    if (
-      selectedProfile &&
-      window.confirm(`Delete Discord bot profile "${selectedProfile.name}"?`)
-    ) {
-      dispatch(deleteDiscordProfile(selectedProfile.id));
+    if (!profileToDelete) {
+      return;
     }
+    dispatch(deleteDiscordProfile(profileToDelete.id));
+    setProfileToDelete(null);
   }
 
   function resetOutputs() {
@@ -211,7 +211,7 @@ export function DiscordSettings() {
           <IconButton
             size="small"
             disabled={busy || !selectedProfile || selectedProfileIsActive}
-            onClick={handleDelete}
+            onClick={() => setProfileToDelete(selectedProfile)}
             aria-label="Delete Discord bot profile"
           >
             <DeleteIcon />
@@ -253,6 +253,22 @@ export function DiscordSettings() {
           onSave={handleSave}
           onClose={() => setEditorProfile(undefined)}
         />
+      )}
+
+      {profileToDelete && (
+        <Stack spacing={1} mt={1}>
+          <Typography variant="body2">
+            Delete profile &quot;{profileToDelete.name}&quot;?
+          </Typography>
+          <Stack direction="row" spacing={1}>
+            <Button fullWidth onClick={() => setProfileToDelete(null)}>
+              Cancel
+            </Button>
+            <Button fullWidth color="error" onClick={handleDelete}>
+              Delete
+            </Button>
+          </Stack>
+        </Stack>
       )}
     </>
   );
