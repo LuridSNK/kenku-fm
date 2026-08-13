@@ -26,3 +26,10 @@ export function getRandomBackground(): Background {
 export function isBackground(background: string): background is Background {
   return background in backgrounds;
 }
+
+export function getBackgroundSource(background: string): string {
+  const source = isBackground(background) ? backgrounds[background] : background;
+  return source.startsWith("file:")
+    ? `kenku-image://local?source=${encodeURIComponent(source)}`
+    : source;
+}

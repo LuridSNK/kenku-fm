@@ -28,6 +28,7 @@ export function SoundboardAdd({ open, onClose }: SoundboardAddProps) {
   useEffect(() => {
     if (!open) {
       setTitle("");
+      setBackground(Object.keys(backgrounds)[0]);
     }
   }, [open]);
 
@@ -65,7 +66,7 @@ export function SoundboardAdd({ open, onClose }: SoundboardAddProps) {
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
-          <Button disabled={!title || !background} type="submit">
+          <Button disabled={!title} type="submit">
             Add
           </Button>
         </DialogActions>

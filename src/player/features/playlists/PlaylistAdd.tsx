@@ -28,6 +28,7 @@ export function PlaylistAdd({ open, onClose }: PlaylistAddProps) {
   useEffect(() => {
     if (!open) {
       setTitle("");
+      setBackground(Object.keys(backgrounds)[0]);
     }
   }, [open]);
 
@@ -65,7 +66,7 @@ export function PlaylistAdd({ open, onClose }: PlaylistAddProps) {
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
-          <Button disabled={!title || !background} type="submit">
+          <Button disabled={!title} type="submit">
             Add
           </Button>
         </DialogActions>
