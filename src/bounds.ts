@@ -30,7 +30,7 @@ export function getSavedBounds(
       savedBounds.y = bounds.y;
     }
     // If the saved size is still valid, use it.
-    if (bounds.width <= area.width || bounds.height <= area.height) {
+    if (bounds.width <= area.width && bounds.height <= area.height) {
       // If the saved width and height are smaller than the window min then return the window min
       savedBounds.width = Math.max(bounds.width, minWidth);
       savedBounds.height = Math.max(bounds.height, minHeight);
@@ -39,18 +39,19 @@ export function getSavedBounds(
   return { bounds: savedBounds, maximized };
 }
 
-export function saveWindowBounds(window: BrowserWindow) {
-  function handleResizeOrMove() {
+export function saveWindowBounds(window: BrowserWindow): () => void {
+  function saveNormalBounds() {
     if (!window.isDestroyed()) {
       store.set("bounds", window.getNormalBounds());
-      store.set("maximized", false);
     }
   }
-  const throttledResizeOrMove = throttle(handleResizeOrMove, 1000);
-  window.on("resized", throttledResizeOrMove);
-  window.on("moved", throttledResizeOrMove);
+  const saveNormalBoundsThrottled = throttle(saveNormalBounds, 1000);
+  window.on("resize", saveNormalBoundsThrottled);
+  window.on("move", saveNormalBoundsThrottled);
 
   function handleMaximize() {
+    saveNormalBoundsThrottled.cancel();
+    saveNormalBounds();
     store.set("maximized", true);
   }
   function handleUnmaximize() {
@@ -58,4 +59,10 @@ export function saveWindowBounds(window: BrowserWindow) {
   }
   window.on("maximize", handleMaximize);
   window.on("unmaximize", handleUnmaximize);
+
+  return () => {
+    saveNormalBoundsThrottled.cancel();
+    saveNormalBounds();
+    store.set("maximized", window.isMaximized());
+  };
 }

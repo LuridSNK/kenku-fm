@@ -74,13 +74,14 @@ const createWindow = (): BrowserWindow => {
   // Prevent app suspension for Kenku FM to avoid playback issues
   const powerSaveBlockerId = powerSaveBlocker.start("prevent-app-suspension");
 
+  const saveFinalWindowBounds = saveWindowBounds(mainWindow);
   mainWindow.on("close", () => {
+    saveFinalWindowBounds();
     session.destroy();
     window = null;
     powerSaveBlocker.stop(powerSaveBlockerId);
   });
 
-  saveWindowBounds(mainWindow);
 
   if (app.isPackaged) {
     runAutoUpdate(mainWindow);
