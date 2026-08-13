@@ -1,10 +1,16 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-export type ConnectionStatus = "disconnected" | "connecting" | "ready";
 export type StreamingMode = "lowLatency" | "performance";
 
+export type DiscordProfile = {
+  id: string;
+  name: string;
+  token: string;
+};
+
 export interface SettingsState {
-  discordToken: string;
+  discordProfiles: DiscordProfile[];
+  selectedDiscordProfileId: string | null;
   urlBarEnabled: boolean;
   remoteEnabled: boolean;
   remoteAddress: string;
@@ -16,7 +22,8 @@ export interface SettingsState {
 }
 
 const initialState: SettingsState = {
-  discordToken: "",
+  discordProfiles: [],
+  selectedDiscordProfileId: null,
   urlBarEnabled: true,
   remoteEnabled: false,
   remoteAddress: "127.0.0.1",
@@ -31,8 +38,49 @@ export const connectionSlice = createSlice({
   name: "settings",
   initialState,
   reducers: {
-    setDiscordToken: (state, action: PayloadAction<string>) => {
-      state.discordToken = action.payload;
+    addDiscordProfile: (state, action: PayloadAction<DiscordProfile>) => {
+      const profile = action.payload;
+      if (
+        !profile.name.trim() ||
+        !profile.token.trim() ||
+        state.discordProfiles.some(
+          ({ name }) => name.toLowerCase() === profile.name.toLowerCase(),
+        )
+      ) {
+        return;
+      }
+      state.discordProfiles.push(profile);
+      state.selectedDiscordProfileId = profile.id;
+    },
+    updateDiscordProfile: (state, action: PayloadAction<DiscordProfile>) => {
+      const profile = action.payload;
+      const index = state.discordProfiles.findIndex(({ id }) => id === profile.id);
+      if (
+        index === -1 ||
+        !profile.name.trim() ||
+        !profile.token.trim() ||
+        state.discordProfiles.some(
+          ({ id, name }) =>
+            id !== profile.id &&
+            name.toLowerCase() === profile.name.toLowerCase(),
+        )
+      ) {
+        return;
+      }
+      state.discordProfiles[index] = profile;
+    },
+    deleteDiscordProfile: (state, action: PayloadAction<string>) => {
+      state.discordProfiles = state.discordProfiles.filter(
+        ({ id }) => id !== action.payload,
+      );
+      if (state.selectedDiscordProfileId === action.payload) {
+        state.selectedDiscordProfileId = state.discordProfiles[0]?.id ?? null;
+      }
+    },
+    selectDiscordProfile: (state, action: PayloadAction<string>) => {
+      if (state.discordProfiles.some(({ id }) => id === action.payload)) {
+        state.selectedDiscordProfileId = action.payload;
+      }
     },
     setURLBarEnabled: (state, action: PayloadAction<boolean>) => {
       state.urlBarEnabled = action.payload;
@@ -62,7 +110,10 @@ export const connectionSlice = createSlice({
 });
 
 export const {
-  setDiscordToken,
+  addDiscordProfile,
+  updateDiscordProfile,
+  deleteDiscordProfile,
+  selectDiscordProfile,
   setURLBarEnabled,
   setRemoteEnabled,
   setRemoteAddress,

@@ -56,11 +56,30 @@ const migrations: any = {
       },
     };
   },
+  // v1.3 - Replace the single Discord token with named bot profiles
+  5: (state: RootState): RootState => {
+    const legacySettings = state.settings as typeof state.settings & {
+      discordToken?: string;
+    };
+    const { discordToken, ...settings } = legacySettings;
+    const profile = discordToken
+      ? { id: "migrated-discord-bot", name: "Discord Bot", token: discordToken }
+      : null;
+
+    return {
+      ...state,
+      settings: {
+        ...settings,
+        discordProfiles: profile ? [profile] : [],
+        selectedDiscordProfileId: profile?.id ?? null,
+      },
+    };
+  },
 };
 
 const persistConfig = {
   key: "root",
-  version: 4,
+  version: 5,
   storage,
   whitelist: ["bookmarks", "settings"],
   migrate: createMigrate(migrations, { debug: false }),

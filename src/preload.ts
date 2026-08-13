@@ -51,8 +51,8 @@ ipcRenderer.on("BROWSER_VIEW_LOADED", (_, viewId: number) => {
 });
 
 const api = {
-  connect: (token: string) => {
-    ipcRenderer.send("DISCORD_CONNECT", token);
+  connect: (profileId: string, token: string) => {
+    ipcRenderer.send("DISCORD_CONNECT", profileId, token);
   },
   disconnect: () => {
     ipcRenderer.send("DISCORD_DISCONNECT");
