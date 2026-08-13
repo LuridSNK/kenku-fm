@@ -10,11 +10,10 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import React from "react";
 
-import { v4 as uuid } from "uuid";
 
 import { useDispatch, useSelector } from "react-redux";
 import { type RootState } from "../../app/store";
-import { addBookmark, removeBookmark } from "../bookmarks/bookmarksSlice";
+import { BookmarkDestinationMenu } from "../bookmarks/BookmarkDestinationMenu";
 import { setMuted } from "../player/playerSlice";
 import { safeURL } from "./Tabs";
 import { Tab, editTab, removeTab, selectTab } from "./tabsSlice";
@@ -33,10 +32,12 @@ export function TabItem({ tab, selected, allowClose, shadow }: TabType) {
     (state: RootState) => state.bookmarks.bookmarks.byId,
   );
   const dispatch = useDispatch();
+  const [bookmarkMenuAnchor, setBookmarkMenuAnchor] =
+    React.useState<HTMLElement | null>(null);
 
-  const isBookmarked = Object.values(bookmarks).filter((bookmark) => {
-    return bookmark.url === tab.url;
-  });
+  const isBookmarked = Object.values(bookmarks).some(
+    (bookmark) => bookmark.url === tab.url,
+  );
 
   const showMedia = tab.playingMedia > 0;
   const showBookmark = Boolean(safeURL(tab.url) && selected && allowClose);
@@ -75,26 +76,12 @@ export function TabItem({ tab, selected, allowClose, shadow }: TabType) {
               edge="end"
               size="small"
               aria-label="bookmark"
-              onClick={() => {
-                if (isBookmarked.length === 0) {
-                  const id = uuid();
-                  dispatch(
-                    addBookmark({
-                      id,
-                      url: tab.url,
-                      title: tab.title,
-                      icon: tab.icon,
-                    }),
-                  );
-                } else {
-                  dispatch(removeBookmark(isBookmarked[0].id));
-                }
-              }}
+              onClick={(event) => setBookmarkMenuAnchor(event.currentTarget)}
             >
-              {isBookmarked.length === 0 ? (
-                <BookmarkBorderIcon sx={{ fontSize: "1rem" }} />
-              ) : (
+              {isBookmarked ? (
                 <BookmarkIcon sx={{ fontSize: "1rem" }} />
+              ) : (
+                <BookmarkBorderIcon sx={{ fontSize: "1rem" }} />
               )}
             </IconButton>
           )}
@@ -121,6 +108,11 @@ export function TabItem({ tab, selected, allowClose, shadow }: TabType) {
               <CloseIcon sx={{ fontSize: "1rem" }} />
             </IconButton>
           )}
+          <BookmarkDestinationMenu
+            anchorEl={bookmarkMenuAnchor}
+            tab={tab}
+            onClose={() => setBookmarkMenuAnchor(null)}
+          />
         </>
       }
       sx={{
