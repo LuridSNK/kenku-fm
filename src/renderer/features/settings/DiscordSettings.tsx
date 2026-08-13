@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -21,8 +21,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../app/store";
 import { showWindowControls } from "../../common/showWindowControls";
 import {
-  setDisconnected,
-  setReady,
   startConnecting,
   startDisconnecting,
 } from "../connection/connectionSlice";
@@ -132,22 +130,6 @@ export function DiscordSettings() {
     DiscordProfile | null
   >();
 
-  useEffect(() => {
-    window.kenku.on("DISCORD_READY", (args) => {
-      dispatch(setReady(args[0]));
-    });
-    window.kenku.on("DISCORD_DISCONNECTED", () => {
-      dispatch(setDisconnected());
-      dispatch(setGuilds([]));
-      dispatch(setOutput("local"));
-      window.kenku.setLoopback(true);
-    });
-
-    return () => {
-      window.kenku.removeAllListeners("DISCORD_READY");
-      window.kenku.removeAllListeners("DISCORD_DISCONNECTED");
-    };
-  }, [dispatch]);
 
   function handleSave(profile: DiscordProfile) {
     dispatch(
