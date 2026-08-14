@@ -2,10 +2,9 @@ import React, { useState } from "react";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import IconButton from "@mui/material/IconButton";
-import Box from "@mui/material/Box";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import MoreIcon from "@mui/icons-material/MoreHorizRounded";
+import MoreIcon from "@mui/icons-material/MoreVertRounded";
 import ListItem from "@mui/material/ListItem";
 
 import { useDispatch } from "react-redux";
@@ -76,8 +75,25 @@ export function BookmarkListItem({ bookmark, shadow }: BookmarkListItemProps) {
     <>
       <ListItem
         disablePadding
+        sx={{
+          mx: 1,
+          my: 0.5,
+          width: "auto",
+          borderRadius: "12px",
+          "&:hover": { bgcolor: "action.hover" },
+          "& .MuiListItemButton-root": {
+            m: 0,
+            borderRadius: "inherit",
+          },
+          "& .MuiListItemButton-root:hover": { bgcolor: "transparent" },
+        }}
         secondaryAction={
-          <IconButton size="small" onClick={handleMoreClick}>
+          <IconButton
+            size="small"
+            sx={{ "&:hover": { bgcolor: "transparent" } }}
+            onClick={handleMoreClick}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
             <MoreIcon />
           </IconButton>
         }
@@ -87,20 +103,8 @@ export function BookmarkListItem({ bookmark, shadow }: BookmarkListItemProps) {
           sx={{ px: 2, boxShadow: shadow ? 10 : "none" }}
           onClick={select}
           onDoubleClick={openSettings}
+          onKeyDown={(event) => event.stopPropagation()}
         >
-          {bookmark.icon && (
-            <Box
-              sx={{
-                width: "24px",
-                height: "24px",
-                objectFit: "cover",
-                marginRight: 1,
-                flexShrink: 0,
-              }}
-            >
-              <img src={bookmark.icon} />
-            </Box>
-          )}
           <ListItemText
             primary={bookmark.title}
             primaryTypographyProps={{ noWrap: true }}

@@ -19,6 +19,7 @@ import {
   REGISTER,
 } from "redux-persist";
 import storage from "redux-persist/lib/storage";
+import type { MigrationManifest } from "redux-persist";
 
 const rootReducer = combineReducers({
   connection: connectionReducer,
@@ -30,7 +31,16 @@ const rootReducer = combineReducers({
   input: inputReducer,
 });
 
-const migrations: any = {
+type LegacyBookmarksState = Omit<RootState, "bookmarks"> & {
+  bookmarks: {
+    bookmarks: {
+      byId: RootState["bookmarks"]["bookmarks"]["byId"];
+      allIds: string[];
+    };
+  };
+};
+
+const migrations = {
   2: (state: RootState): RootState => {
     return {
       ...state,
@@ -56,11 +66,27 @@ const migrations: any = {
       },
     };
   },
-};
+  // v1.3 - Add named bookmark groups
+  5: (state: LegacyBookmarksState): RootState => {
+    return {
+      ...state,
+      bookmarks: {
+        bookmarks: {
+          byId: state.bookmarks.bookmarks.byId,
+          ungroupedIds: state.bookmarks.bookmarks.allIds,
+        },
+        groups: {
+          byId: {},
+          allIds: [],
+        },
+      },
+    };
+  },
+} as unknown as MigrationManifest;
 
 const persistConfig = {
   key: "root",
-  version: 4,
+  version: 5,
   storage,
   whitelist: ["bookmarks", "settings"],
   migrate: createMigrate(migrations, { debug: false }),

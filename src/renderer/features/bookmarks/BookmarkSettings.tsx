@@ -5,9 +5,11 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
+import MenuItem from "@mui/material/MenuItem";
 
-import { useDispatch } from "react-redux";
-import { Bookmark, editBookmark } from "./bookmarksSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "../../app/store";
+import { Bookmark, editBookmark, moveBookmark } from "./bookmarksSlice";
 
 import { getDropURL } from "../../common/drop";
 import { showWindowControls } from "../../common/showWindowControls";
@@ -24,6 +26,13 @@ export function BookmarkSettings({
   onClose,
 }: BookmarkSettingsProps) {
   const dispatch = useDispatch();
+  const { bookmarks, groups } = useSelector(
+    (state: RootState) => state.bookmarks,
+  );
+  const groupId =
+    groups.allIds.find((id) =>
+      groups.byId[id].bookmarkIds.includes(bookmark.id),
+    ) ?? null;
 
   function handleURLChange(event: React.ChangeEvent<HTMLInputElement>) {
     dispatch(editBookmark({ id: bookmark.id, url: event.target.value }));
@@ -39,6 +48,21 @@ export function BookmarkSettings({
 
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
     dispatch(editBookmark({ id: bookmark.id, title: event.target.value }));
+  }
+  function handleDestinationChange(event: React.ChangeEvent<HTMLInputElement>) {
+    onClose();
+    const destinationId =
+      event.target.value === "ungrouped" ? null : event.target.value;
+    const destinationIds = destinationId
+      ? groups.byId[destinationId].bookmarkIds
+      : bookmarks.ungroupedIds;
+    dispatch(
+      moveBookmark({
+        id: bookmark.id,
+        groupId: destinationId,
+        index: destinationIds.length,
+      }),
+    );
   }
 
   function handleClose() {
@@ -98,6 +122,22 @@ export function BookmarkSettings({
             value={bookmark.title}
             onChange={handleTitleChange}
           />
+          <TextField
+            select
+            margin="dense"
+            label="Group"
+            fullWidth
+            variant="standard"
+            value={groupId ?? "ungrouped"}
+            onChange={handleDestinationChange}
+          >
+            <MenuItem value="ungrouped">Ungrouped</MenuItem>
+            {groups.allIds.map((id) => (
+              <MenuItem key={id} value={id}>
+                {groups.byId[id].name}
+              </MenuItem>
+            ))}
+          </TextField>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button type="submit">Done</Button>
