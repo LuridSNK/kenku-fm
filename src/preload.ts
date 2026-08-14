@@ -1,6 +1,11 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 import { BrowserViewManagerPreload } from "./preload/managers/BrowserViewManagerPreload";
+import {
+  YouTubeDownloadJob,
+  YouTubeDownloadRequest,
+  YouTubeDownloadUpdate,
+} from "./types/youtubeDownloads";
 
 const viewManager = new BrowserViewManagerPreload();
 
@@ -175,6 +180,31 @@ const api = {
   },
   chooseMediaRoot: (): Promise<string | null> => {
     return ipcRenderer.invoke("MEDIA_LIBRARY_CHOOSE_ROOT");
+  },
+  enqueueYouTubeDownload: (
+    request: YouTubeDownloadRequest,
+  ): Promise<YouTubeDownloadJob> =>
+    ipcRenderer.invoke("YOUTUBE_DOWNLOAD_ENQUEUE", request),
+  listYouTubeDownloads: (): Promise<YouTubeDownloadJob[]> =>
+    ipcRenderer.invoke("YOUTUBE_DOWNLOAD_LIST"),
+  cancelYouTubeDownload: (id: string): Promise<YouTubeDownloadJob> =>
+    ipcRenderer.invoke("YOUTUBE_DOWNLOAD_CANCEL", id),
+  retryYouTubeDownload: (id: string): Promise<YouTubeDownloadJob> =>
+    ipcRenderer.invoke("YOUTUBE_DOWNLOAD_RETRY", id),
+  dismissYouTubeDownload: (id: string): Promise<void> =>
+    ipcRenderer.invoke("YOUTUBE_DOWNLOAD_DISMISS", id),
+  revealYouTubeDownload: (id: string): Promise<void> =>
+    ipcRenderer.invoke("YOUTUBE_DOWNLOAD_REVEAL", id),
+  onYouTubeDownloadUpdated: (
+    callback: (update: YouTubeDownloadUpdate) => void,
+  ) => {
+    const listener = (
+      _: Electron.IpcRendererEvent,
+      update: YouTubeDownloadUpdate,
+    ) => callback(update);
+    ipcRenderer.on("YOUTUBE_DOWNLOAD_UPDATED", listener);
+    return () =>
+      ipcRenderer.removeListener("YOUTUBE_DOWNLOAD_UPDATED", listener);
   },
   platform: ipcRenderer.sendSync("GET_PLATFORM") as string,
   version: ipcRenderer.sendSync("GET_VERSION") as string,

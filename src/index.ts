@@ -18,6 +18,7 @@ import {
   registerMediaLibrary,
   registerMediaLibraryScheme,
 } from "./main/mediaLibrary";
+import { registerYouTubeDownloads } from "./main/youtubeDownloads";
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -116,6 +117,7 @@ if (!hasSingleInstanceLock) {
   // Some APIs can only be used after this event occurs.
   app.whenReady().then(async () => {
     registerMediaLibrary();
+    await registerYouTubeDownloads();
 
     let hasWidevineError = false;
 

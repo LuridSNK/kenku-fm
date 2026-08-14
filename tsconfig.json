@@ -2,6 +2,7 @@
   "compilerOptions": {
     "allowJs": true,
     "module": "commonjs",
+    "lib": ["ES2024", "DOM"],
     "skipLibCheck": true,
     "esModuleInterop": true,
     "noImplicitAny": true,
