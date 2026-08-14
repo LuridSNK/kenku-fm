@@ -13,6 +13,7 @@ import { addPlaylist } from "./playlistsSlice";
 
 import { backgrounds } from "../../backgrounds";
 import { ImageSelector } from "../../common/ImageSelector";
+import { useManagedMediaDrafts } from "../../common/useManagedMediaDeletion";
 
 type PlaylistAddProps = {
   open: boolean;
@@ -21,6 +22,7 @@ type PlaylistAddProps = {
 
 export function PlaylistAdd({ open, onClose }: PlaylistAddProps) {
   const dispatch = useDispatch();
+  const mediaDrafts = useManagedMediaDrafts();
 
   const [title, setTitle] = useState("");
   const [background, setBackground] = useState(Object.keys(backgrounds)[0]);
@@ -35,15 +37,26 @@ export function PlaylistAdd({ open, onClose }: PlaylistAddProps) {
     setTitle(event.target.value);
   }
 
+  function handleBackgroundChange(nextBackground: string, imported = false) {
+    mediaDrafts.registerDraft(nextBackground, imported);
+    setBackground(nextBackground);
+  }
+
+  async function handleClose() {
+    await mediaDrafts.discardDrafts();
+    onClose();
+  }
+
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    void mediaDrafts.discardDrafts(background);
     const id = uuid();
     dispatch(addPlaylist({ id, title, background, tracks: [] }));
     onClose();
   }
 
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog open={open} onClose={handleClose}>
       <DialogTitle>Add Playlist</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
@@ -61,10 +74,13 @@ export function PlaylistAdd({ open, onClose }: PlaylistAddProps) {
             value={title}
             onChange={handleTitleChange}
           />
-          <ImageSelector value={background} onChange={setBackground} />
+          <ImageSelector
+            value={background}
+            onChange={handleBackgroundChange}
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={handleClose}>Cancel</Button>
           <Button disabled={!title || !background} type="submit">
             Add
           </Button>

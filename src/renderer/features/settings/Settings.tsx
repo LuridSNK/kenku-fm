@@ -86,6 +86,79 @@ export function Settings({ open, onClose }: SettingsProps) {
     };
   }, [dispatch]);
 
+  const [mediaRoot, setMediaRoot] = useState("");
+  const [mediaRootLoading, setMediaRootLoading] = useState(false);
+  const [mediaRootChanging, setMediaRootChanging] = useState(false);
+  const [mediaRootError, setMediaRootError] = useState("");
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    let active = true;
+    setMediaRootLoading(true);
+    setMediaRootError("");
+    void window.kenku
+      .getMediaRoot()
+      .then(
+        (root) => active && setMediaRoot(root),
+        () => active && setMediaRootError("Could not load media folder."),
+      )
+      .finally(() => active && setMediaRootLoading(false));
+
+    return () => {
+      active = false;
+    };
+  }, [open]);
+
+  async function handleMediaRootChange() {
+    setMediaRootChanging(true);
+    setMediaRootError("");
+    try {
+      const root = await window.kenku.chooseMediaRoot();
+      if (root !== null) {
+        setMediaRoot(root);
+      }
+    } catch {
+      setMediaRootError("Could not change media folder.");
+    } finally {
+      setMediaRootChanging(false);
+    }
+  }
+
+  const mediaSettings = (
+    <Stack spacing={1}>
+      <TextField
+        margin="dense"
+        size="small"
+        label="Folder"
+        fullWidth
+        variant="standard"
+        value={mediaRoot}
+        placeholder={mediaRootLoading ? "Loading…" : undefined}
+        error={Boolean(mediaRootError)}
+        helperText={mediaRootError}
+        FormHelperTextProps={{ role: mediaRootError ? "alert" : undefined }}
+        InputProps={{ readOnly: true }}
+        inputProps={{ title: mediaRoot, "aria-busy": mediaRootLoading }}
+      />
+      <Button
+        onClick={handleMediaRootChange}
+        fullWidth
+        variant="outlined"
+        size="small"
+        disabled={mediaRootLoading || mediaRootChanging}
+      >
+        {mediaRootChanging ? (
+          <CircularProgress size={24} aria-label="Changing media folder" />
+        ) : (
+          "Change Folder"
+        )}
+      </Button>
+    </Stack>
+  );
+
   const discordSettings = (
     <Stack spacing={1}>
       <TextField
@@ -366,6 +439,9 @@ export function Settings({ open, onClose }: SettingsProps) {
         <Divider sx={{ mb: 2 }} />
         <DialogContentText>Streaming</DialogContentText>
         {streamingSettings}
+        <Divider sx={{ mb: 2 }} />
+        <DialogContentText>Media Library</DialogContentText>
+        {mediaSettings}
         <Divider sx={{ mb: 2 }} />
         <DialogContentText>Other</DialogContentText>
         {otherSettings}

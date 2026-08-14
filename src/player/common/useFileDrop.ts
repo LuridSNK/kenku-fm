@@ -1,6 +1,6 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
-export type FileInfo = { path: string; name: string };
+export type FileInfo = { url: string; name: string };
 
 function useFileDrop({
   onDrop,
@@ -12,8 +12,19 @@ function useFileDrop({
   accept: React.HTMLProps<HTMLInputElement>["accept"];
 }) {
   const [isDragging, setIsDragging] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const rootRef = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const importGeneration = useRef(0);
+  const active = useRef(true);
+
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+      importGeneration.current += 1;
+    };
+  }, []);
 
   function onDragEnter(event: React.DragEvent<HTMLElement>) {
     event.preventDefault();
@@ -38,13 +49,13 @@ function useFileDrop({
     }
   }
 
-  function onFileDrop(event: React.DragEvent<HTMLElement>) {
+  async function onFileDrop(event: React.DragEvent<HTMLElement>) {
     event.preventDefault();
     event.stopPropagation();
     setIsDragging(false);
     const eventFiles = event.dataTransfer.files;
     if (eventFiles) {
-      onFiles(eventFiles);
+      await onFiles(eventFiles);
     }
   }
 
@@ -56,25 +67,54 @@ function useFileDrop({
     }
   }
 
-  function onChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = event.target.files;
-    onFiles(files);
+  async function onChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const importPromise = onFiles(event.target.files);
     event.target.value = "";
+    await importPromise;
   }
 
-  function onFiles(fileList: FileList) {
-    const files: FileInfo[] = [];
-    const maxFiles = multiple ? fileList.length : Math.min(fileList.length, 1);
-    for (let i = 0; i < maxFiles; i++) {
-      const file = fileList[i];
-      if (!checkAccept(file.type)) {
-        continue;
-      }
-      const path = window.player.getPathForFile(file);
-      const name = file.name;
-      files.push({ path, name });
+  async function discardImports(files: FileInfo[]) {
+    if (files.length === 0) return;
+    try {
+      await window.player.deleteManagedMedia(files.map((file) => file.url));
+    } catch (error) {
+      console.error("Failed to discard imported media", error);
     }
-    onDrop(files);
+  }
+
+  async function onFiles(fileList: FileList | null) {
+    if (!fileList) {
+      return;
+    }
+    const maxFiles = multiple ? fileList.length : Math.min(fileList.length, 1);
+    const files = Array.from(fileList)
+      .slice(0, maxFiles)
+      .filter((file) => checkAccept(file.type));
+
+    const generation = ++importGeneration.current;
+    setImportError(null);
+    const results = await Promise.allSettled(
+      files.map(async (file) => ({
+        url: await window.player.importMediaFile(file),
+        name: file.name,
+      })),
+    );
+    const imported = results
+      .filter(
+        (result): result is PromiseFulfilledResult<FileInfo> =>
+          result.status === "fulfilled",
+      )
+      .map((result) => result.value);
+    if (!active.current || generation !== importGeneration.current) {
+      await discardImports(imported);
+      return;
+    }
+    if (results.some((result) => result.status === "rejected")) {
+      await discardImports(imported);
+      setImportError("Unable to import this file. Please try again.");
+      return;
+    }
+    onDrop(imported);
   }
 
   // TODO: Make this check better i.e. check for explicit accepted files but this works for now
@@ -111,7 +151,17 @@ function useFileDrop({
     onChange,
   };
 
-  return { isDragging, rootProps, inputProps };
+  return {
+    isDragging,
+    importError,
+    clearImportError: () => {
+      importGeneration.current += 1;
+      setImportError(null);
+    },
+    importFiles: onFiles,
+    rootProps,
+    inputProps,
+  };
 }
 
 export default useFileDrop;

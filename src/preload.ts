@@ -170,6 +170,12 @@ const api = {
   clearCache: () => {
     return ipcRenderer.invoke("CLEAR_CACHE");
   },
+  getMediaRoot: (): Promise<string> => {
+    return ipcRenderer.invoke("MEDIA_LIBRARY_GET_ROOT");
+  },
+  chooseMediaRoot: (): Promise<string | null> => {
+    return ipcRenderer.invoke("MEDIA_LIBRARY_CHOOSE_ROOT");
+  },
   platform: ipcRenderer.sendSync("GET_PLATFORM") as string,
   version: ipcRenderer.sendSync("GET_VERSION") as string,
 };

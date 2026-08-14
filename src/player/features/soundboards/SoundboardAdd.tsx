@@ -13,6 +13,7 @@ import { addSoundboard } from "./soundboardsSlice";
 
 import { backgrounds } from "../../backgrounds";
 import { ImageSelector } from "../../common/ImageSelector";
+import { useManagedMediaDrafts } from "../../common/useManagedMediaDeletion";
 
 type SoundboardAddProps = {
   open: boolean;
@@ -21,6 +22,7 @@ type SoundboardAddProps = {
 
 export function SoundboardAdd({ open, onClose }: SoundboardAddProps) {
   const dispatch = useDispatch();
+  const mediaDrafts = useManagedMediaDrafts();
 
   const [title, setTitle] = useState("");
   const [background, setBackground] = useState(Object.keys(backgrounds)[0]);
@@ -35,15 +37,26 @@ export function SoundboardAdd({ open, onClose }: SoundboardAddProps) {
     setTitle(event.target.value);
   }
 
+  function handleBackgroundChange(nextBackground: string, imported = false) {
+    mediaDrafts.registerDraft(nextBackground, imported);
+    setBackground(nextBackground);
+  }
+
+  async function handleClose() {
+    await mediaDrafts.discardDrafts();
+    onClose();
+  }
+
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    void mediaDrafts.discardDrafts(background);
     const id = uuid();
     dispatch(addSoundboard({ id, title, background, sounds: [] }));
     onClose();
   }
 
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog open={open} onClose={handleClose}>
       <DialogTitle>Add Soundboard</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
@@ -61,10 +74,13 @@ export function SoundboardAdd({ open, onClose }: SoundboardAddProps) {
             value={title}
             onChange={handleTitleChange}
           />
-          <ImageSelector value={background} onChange={setBackground} />
+          <ImageSelector
+            value={background}
+            onChange={handleBackgroundChange}
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={handleClose}>Cancel</Button>
           <Button disabled={!title || !background} type="submit">
             Add
           </Button>

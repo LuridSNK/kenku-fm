@@ -22,6 +22,7 @@ import {
   stopTrack,
   updatePlayback,
 } from "./playlistPlaybackSlice";
+import { useManagedMediaDeletion } from "../../common/useManagedMediaDeletion";
 
 type TrackItemProps = {
   track: Track;
@@ -37,6 +38,7 @@ export function TrackItem({ track, playlist, onPlay }: TrackItemProps) {
     (state: RootState) => state.playlistPlayback.playing && isCurrentTrack,
   );
   const dispatch = useDispatch();
+  const mediaDeletion = useManagedMediaDeletion();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -60,16 +62,18 @@ export function TrackItem({ track, playlist, onPlay }: TrackItemProps) {
   }
 
   function handleDelete() {
-    // TODO: Fix bug where playback does not update to zero when isCurrentTrack is removed
-    if (isCurrentTrack) {
-      dispatch(playPause(false));
-      dispatch(stopTrack());
-    }
-    dispatch(removeTrack({ trackId: track.id, playlistId: playlist.id }));
-    dispatch(
-      removeTrackFromQueue({ trackId: track.id, playlistId: playlist.id }),
-    );
     handleMenuClose();
+    mediaDeletion.requestDeletion([track.url], () => {
+      // TODO: Fix bug where playback does not update to zero when isCurrentTrack is removed
+      if (isCurrentTrack) {
+        dispatch(playPause(false));
+        dispatch(stopTrack());
+      }
+      dispatch(removeTrack({ trackId: track.id, playlistId: playlist.id }));
+      dispatch(
+        removeTrackFromQueue({ trackId: track.id, playlistId: playlist.id }),
+      );
+    });
   }
 
   function handlePlayPause() {
@@ -136,6 +140,7 @@ export function TrackItem({ track, playlist, onPlay }: TrackItemProps) {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
       />
+      {mediaDeletion.dialog}
     </ListItem>
   );
 }

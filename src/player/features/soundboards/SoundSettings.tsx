@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Dialog from "@mui/material/Dialog";
@@ -14,6 +14,10 @@ import FormHelperText from "@mui/material/FormHelperText";
 import { useDispatch } from "react-redux";
 import { editSound, Sound } from "./soundboardsSlice";
 import { AudioSelector } from "../../common/AudioSelector";
+import {
+  useManagedMediaDeletion,
+  useManagedMediaDrafts,
+} from "../../common/useManagedMediaDeletion";
 
 type SoundSettingsProps = {
   sound: Sound;
@@ -23,6 +27,13 @@ type SoundSettingsProps = {
 
 export function SoundSettings({ sound, open, onClose }: SoundSettingsProps) {
   const dispatch = useDispatch();
+  const mediaDeletion = useManagedMediaDeletion();
+  const mediaDrafts = useManagedMediaDrafts();
+  const [url, setURL] = useState(sound.url);
+
+  useEffect(() => {
+    if (open) setURL(sound.url);
+  }, [open, sound.url]);
 
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
     dispatch(editSound({ id: sound.id, title: event.target.value }));
@@ -32,8 +43,9 @@ export function SoundSettings({ sound, open, onClose }: SoundSettingsProps) {
     dispatch(editSound({ id: sound.id, title }));
   }
 
-  function handleURLChange(url: string) {
-    dispatch(editSound({ id: sound.id, url }));
+  function handleURLChange(nextURL: string, imported = false) {
+    mediaDrafts.registerDraft(nextURL, imported);
+    setURL(nextURL);
   }
 
   function handleFadeInChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -48,13 +60,28 @@ export function SoundSettings({ sound, open, onClose }: SoundSettingsProps) {
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (url === sound.url) {
+      void mediaDrafts.discardDrafts();
+      onClose();
+      return;
+    }
+    mediaDeletion.requestDeletion([sound.url], () => {
+      void mediaDrafts.discardDrafts(url);
+      dispatch(editSound({ id: sound.id, url }));
+      onClose();
+    });
+  }
+
+  async function handleClose() {
+    await mediaDrafts.discardDrafts();
     onClose();
   }
 
   return (
+    <>
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       // Stop key events from propagating to prevent the sound drag and drop from stealing the space bar
       onKeyDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
@@ -63,7 +90,7 @@ export function SoundSettings({ sound, open, onClose }: SoundSettingsProps) {
       <form onSubmit={handleSubmit}>
         <DialogContent>
           <AudioSelector
-            value={sound.url}
+            value={url}
             onChange={handleURLChange}
             onFileName={handleTitleStringChange}
           />
@@ -129,6 +156,8 @@ export function SoundSettings({ sound, open, onClose }: SoundSettingsProps) {
           <Button type="submit">Done</Button>
         </DialogActions>
       </form>
-    </Dialog>
+      </Dialog>
+      {mediaDeletion.dialog}
+    </>
   );
 }

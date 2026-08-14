@@ -23,6 +23,7 @@ import { addSounds, removeSoundboard, Sound } from "./soundboardsSlice";
 
 import { backgrounds, isBackground } from "../../backgrounds";
 import { useFolderDrop } from "../../common/useFolderDrop";
+import { useManagedMediaDeletion } from "../../common/useManagedMediaDeletion";
 
 type SoundboardProps = {
   onPlay: (sound: Sound) => void;
@@ -36,6 +37,8 @@ export function Soundboard({ onPlay, onStop }: SoundboardProps) {
   const soundboard = useSelector(
     (state: RootState) => state.soundboards.soundboards.byId[soundboardId]
   );
+  const soundboards = useSelector((state: RootState) => state.soundboards);
+  const mediaDeletion = useManagedMediaDeletion();
 
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -64,9 +67,15 @@ export function Soundboard({ onPlay, onStop }: SoundboardProps) {
   }
 
   function handleDelete() {
-    dispatch(removeSoundboard(soundboard.id));
-    navigate(-1);
     handleMenuClose();
+    const sounds = soundboard.sounds.map((id) => soundboards.sounds[id]);
+    mediaDeletion.requestDeletion(
+      [...sounds.map((sound) => sound.url), soundboard.background],
+      () => {
+        dispatch(removeSoundboard(soundboard.id));
+        navigate(-1);
+      },
+    );
   }
 
   const { dragging, containerListeners, overlayListeners } = useFolderDrop(
@@ -184,6 +193,7 @@ export function Soundboard({ onPlay, onStop }: SoundboardProps) {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
       />
+      {mediaDeletion.dialog}
     </>
   );
 }

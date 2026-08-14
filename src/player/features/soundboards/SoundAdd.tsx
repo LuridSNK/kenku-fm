@@ -16,6 +16,7 @@ import { v4 as uuid } from "uuid";
 import { useDispatch } from "react-redux";
 import { addSound } from "./soundboardsSlice";
 import { AudioSelector } from "../../common/AudioSelector";
+import { useManagedMediaDrafts } from "../../common/useManagedMediaDeletion";
 
 type SoundAddProps = {
   soundboardId: string;
@@ -25,6 +26,7 @@ type SoundAddProps = {
 
 export function SoundAdd({ soundboardId, open, onClose }: SoundAddProps) {
   const dispatch = useDispatch();
+  const mediaDrafts = useManagedMediaDrafts();
 
   const [title, setTitle] = useState("");
   const [url, setURL] = useState("");
@@ -52,8 +54,19 @@ export function SoundAdd({ soundboardId, open, onClose }: SoundAddProps) {
     setFadeOut(isNaN(num) ? 0 : num);
   }
 
+  function handleURLChange(nextURL: string, imported = false) {
+    mediaDrafts.registerDraft(nextURL, imported);
+    setURL(nextURL);
+  }
+
+  async function handleClose() {
+    await mediaDrafts.discardDrafts();
+    onClose();
+  }
+
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    void mediaDrafts.discardDrafts(url);
     const id = uuid();
     dispatch(
       addSound({
@@ -65,11 +78,15 @@ export function SoundAdd({ soundboardId, open, onClose }: SoundAddProps) {
   }
 
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog open={open} onClose={handleClose}>
       <DialogTitle>Add Sound</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
-          <AudioSelector value={url} onChange={setURL} onFileName={setTitle} />
+          <AudioSelector
+            value={url}
+            onChange={handleURLChange}
+            onFileName={setTitle}
+          />
           <TextField
             margin="dense"
             id="name"
@@ -129,7 +146,7 @@ export function SoundAdd({ soundboardId, open, onClose }: SoundAddProps) {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={handleClose}>Cancel</Button>
           <Button disabled={!title || !url} type="submit">
             Add
           </Button>

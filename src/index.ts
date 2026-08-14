@@ -14,9 +14,14 @@ import { getMalformedUserAgent, getUserAgent } from "./main/userAgent";
 import { SessionManager } from "./main/managers/SessionManager";
 import { runAutoUpdate } from "./autoUpdate";
 import { getSavedBounds, saveWindowBounds } from "./bounds";
+import {
+  registerMediaLibrary,
+  registerMediaLibraryScheme,
+} from "./main/mediaLibrary";
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
+registerMediaLibraryScheme();
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 let window: BrowserWindow | null = null;
@@ -110,6 +115,8 @@ if (!hasSingleInstanceLock) {
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.
   app.whenReady().then(async () => {
+    registerMediaLibrary();
+
     let hasWidevineError = false;
 
     try {

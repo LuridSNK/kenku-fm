@@ -22,6 +22,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { RootState } from "../../app/store";
 import { Sound, Soundboard, editSound, removeSound } from "./soundboardsSlice";
 import { SoundSettings } from "./SoundSettings";
+import { useManagedMediaDeletion } from "../../common/useManagedMediaDeletion";
 
 type SoundItemProps = {
   id: string;
@@ -51,6 +52,7 @@ export function SoundItem({ id, soundboard, onPlay, onStop }: SoundItemProps) {
     (state: RootState) => sound.id in state.soundboardPlayback.playback,
   );
   const dispatch = useDispatch();
+  const mediaDeletion = useManagedMediaDeletion();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -74,8 +76,10 @@ export function SoundItem({ id, soundboard, onPlay, onStop }: SoundItemProps) {
   }
 
   function handleDelete() {
-    dispatch(removeSound({ soundId: sound.id, soundboardId: soundboard.id }));
     handleMenuClose();
+    mediaDeletion.requestDeletion([sound.url], () => {
+      dispatch(removeSound({ soundId: sound.id, soundboardId: soundboard.id }));
+    });
   }
 
   function handlePlayStop() {
@@ -193,6 +197,7 @@ export function SoundItem({ id, soundboard, onPlay, onStop }: SoundItemProps) {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
       />
+      {mediaDeletion.dialog}
     </>
   );
 }

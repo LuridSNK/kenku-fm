@@ -3,6 +3,7 @@ import React, { useCallback, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import FormGroup from "@mui/material/FormGroup";
+import FormHelperText from "@mui/material/FormHelperText";
 import IconButton from "@mui/material/IconButton";
 import ImageList from "@mui/material/ImageList";
 import ImageListItem from "@mui/material/ImageListItem";
@@ -13,8 +14,6 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
 
-
-import { encodeFilePath, getDropURL } from "../../renderer/common/drop";
 import { backgrounds } from "../backgrounds";
 import useFileDrop, { FileInfo } from "./useFileDrop";
 
@@ -28,38 +27,49 @@ const ImageListButton = styled("img")({
 
 type ImageSelectorProps = {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, imported?: boolean) => void;
 };
 
 export function ImageSelector({ value, onChange }: ImageSelectorProps) {
-  const hasCustomImage = value.startsWith("file") || value.startsWith("http");
+  const hasCustomImage =
+    value.startsWith("file") ||
+    value.startsWith("http") ||
+    value.startsWith("kenku-media://");
   const [imageType, setImageType] = useState(
     hasCustomImage ? "custom" : "default"
   );
 
-  const onDrop = useCallback((acceptedFiles: FileInfo[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      onChange(encodeFilePath(file.path));
-    }
-  }, []);
+  const onDrop = useCallback(
+    (acceptedFiles: FileInfo[]) => {
+      const file = acceptedFiles[0];
+      if (file) {
+        onChange(file.url, true);
+      }
+    },
+    [onChange]
+  );
 
-  const { rootProps, inputProps, isDragging } = useFileDrop({
+  const {
+    rootProps,
+    inputProps,
+    isDragging,
+    importError,
+    clearImportError,
+    importFiles,
+  } = useFileDrop({
     onDrop,
     accept: "image/*",
     multiple: false,
   });
 
   function handleURLChange(event: React.ChangeEvent<HTMLInputElement>) {
+    clearImportError();
     onChange(event.target.value);
   }
 
-  function handleURLDrop(event: React.DragEvent<HTMLInputElement>) {
+  async function handleURLDrop(event: React.DragEvent<HTMLInputElement>) {
     event.preventDefault();
-    const url = getDropURL(event.dataTransfer);
-    if (url) {
-      onChange(url);
-    }
+    await importFiles(event.dataTransfer.files);
   }
 
   const imageSelector = (
@@ -80,7 +90,10 @@ export function ImageSelector({ value, onChange }: ImageSelectorProps) {
               borderWidth: "2px",
               borderColor: "primary.main",
             }}
-            onClick={() => onChange(key)}
+            onClick={() => {
+              clearImportError();
+              onChange(key);
+            }}
           />
         </ImageListItem>
       ))}
@@ -100,7 +113,9 @@ export function ImageSelector({ value, onChange }: ImageSelectorProps) {
         value={value}
         onChange={handleURLChange}
         onDrop={handleURLDrop}
+        error={Boolean(importError)}
       />
+      {importError && <FormHelperText error>{importError}</FormHelperText>}
       <Button
         sx={{
           p: 2,
@@ -137,6 +152,7 @@ export function ImageSelector({ value, onChange }: ImageSelectorProps) {
         size="small"
         onChange={(_, value) => {
           if (value) {
+            clearImportError();
             onChange("");
             setImageType(value);
           }

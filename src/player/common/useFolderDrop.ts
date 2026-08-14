@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { v4 as uuid } from "uuid";
 
-import { cleanFileName, encodeFilePath } from "../../renderer/common/drop";
+import { cleanFileName } from "../../renderer/common/drop";
 
 export interface AudioFile {
   id: string;
@@ -50,10 +50,15 @@ async function getFile(entry: FileSystemFileEntry): Promise<File> {
 async function getEntries(
   entry: FileSystemDirectoryEntry
 ): Promise<FileSystemEntry[]> {
-  const dirReader = entry.createReader();
-  return new Promise((resolve, reject) => {
-    dirReader.readEntries(resolve, reject);
-  });
+  const reader = entry.createReader();
+  const entries: FileSystemEntry[] = [];
+  while (true) {
+    const batch = await new Promise<FileSystemEntry[]>((resolve, reject) => {
+      reader.readEntries(resolve, reject);
+    });
+    if (batch.length === 0) return entries;
+    entries.push(...batch);
+  }
 }
 
 async function getDirectories(
@@ -61,28 +66,34 @@ async function getDirectories(
   path: string = "/",
   directories: Directories = {
     "/": { path: "/", name: "root", audioFiles: [] },
-  }
+  },
+  importedURLs: string[] = [],
 ): Promise<Directories> {
-  for (let entry of entries) {
+  for (const entry of entries) {
     if (isFileSystemFileEntry(entry)) {
       const file = await getFile(entry);
-      if (path in directories && supportedFileTypes.includes(file.type)) {
-        const filePath = window.player.getPathForFile(file);
+      if (supportedFileTypes.includes(file.type)) {
+        const url = await window.player.importMediaFile(file);
+        importedURLs.push(url);
         directories[path].audioFiles.push({
-          url: encodeFilePath(filePath),
+          url,
           title: cleanFileName(file.name),
           id: uuid(),
         });
       }
     } else if (isFileSystemDirectoryEntry(entry)) {
-      const folderPath = path + entry.name;
+      const folderPath = `${path === "/" ? "" : path}/${entry.name}`;
       directories[folderPath] = {
         path: folderPath,
         name: entry.name,
         audioFiles: [],
       };
-      const folderEntries = await getEntries(entry);
-      await getDirectories(folderEntries, folderPath, directories);
+      await getDirectories(
+        await getEntries(entry),
+        folderPath,
+        directories,
+        importedURLs,
+      );
     }
   }
   return directories;
@@ -113,12 +124,23 @@ export function useFolderDrop(onDrop: (directories: Directories) => void) {
   async function handleDrop(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
     event.stopPropagation();
-    const entries = Array.from(event.dataTransfer.items).map((item) =>
-      item.webkitGetAsEntry()
-    );
-    const directories = await getDirectories(entries);
-    onDrop(directories);
-    setDragging(false);
+    const importedURLs: string[] = [];
+    try {
+      const entries = Array.from(event.dataTransfer.items).map((item) =>
+        item.webkitGetAsEntry(),
+      );
+      const directories = await getDirectories(
+        entries,
+        "/",
+        undefined,
+        importedURLs,
+      );
+      onDrop(directories);
+    } catch {
+      await window.player.deleteManagedMedia(importedURLs);
+    } finally {
+      setDragging(false);
+    }
   }
 
   const containerListeners = {

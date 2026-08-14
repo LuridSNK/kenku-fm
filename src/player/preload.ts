@@ -69,7 +69,16 @@ const api = {
   },
   getPathForFile: (file: File) => {
     return webUtils.getPathForFile(file);
-  } 
+  },
+  importMediaFile: (file: File): Promise<string> => {
+    return ipcRenderer.invoke(
+      "MEDIA_LIBRARY_IMPORT",
+      webUtils.getPathForFile(file),
+    );
+  },
+  deleteManagedMedia: (urls: string[]): Promise<void> => {
+    return ipcRenderer.invoke("MEDIA_LIBRARY_DELETE", urls);
+  },
 };
 
 declare global {

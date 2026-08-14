@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import Dialog from "@mui/material/Dialog";
@@ -9,6 +9,10 @@ import DialogTitle from "@mui/material/DialogTitle";
 import { useDispatch } from "react-redux";
 import { editTrack, Track } from "./playlistsSlice";
 import { AudioSelector } from "../../common/AudioSelector";
+import {
+  useManagedMediaDeletion,
+  useManagedMediaDrafts,
+} from "../../common/useManagedMediaDeletion";
 
 type TrackSettingsProps = {
   track: Track;
@@ -18,6 +22,13 @@ type TrackSettingsProps = {
 
 export function TrackSettings({ track, open, onClose }: TrackSettingsProps) {
   const dispatch = useDispatch();
+  const mediaDeletion = useManagedMediaDeletion();
+  const mediaDrafts = useManagedMediaDrafts();
+  const [url, setURL] = useState(track.url);
+
+  useEffect(() => {
+    if (open) setURL(track.url);
+  }, [open, track.url]);
 
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
     dispatch(editTrack({ id: track.id, title: event.target.value }));
@@ -27,19 +38,35 @@ export function TrackSettings({ track, open, onClose }: TrackSettingsProps) {
     dispatch(editTrack({ id: track.id, title }));
   }
 
-  function handleURLChange(url: string) {
-    dispatch(editTrack({ id: track.id, url }));
+  function handleURLChange(nextURL: string, imported = false) {
+    mediaDrafts.registerDraft(nextURL, imported);
+    setURL(nextURL);
+  }
+
+  async function handleClose() {
+    await mediaDrafts.discardDrafts();
+    onClose();
   }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    onClose();
+    if (url === track.url) {
+      void mediaDrafts.discardDrafts();
+      onClose();
+      return;
+    }
+    mediaDeletion.requestDeletion([track.url], () => {
+      void mediaDrafts.discardDrafts(url);
+      dispatch(editTrack({ id: track.id, url }));
+      onClose();
+    });
   }
 
   return (
+    <>
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       // Stop key events from propagating to prevent the track drag and drop from stealing the space bar
       onKeyDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
@@ -48,7 +75,7 @@ export function TrackSettings({ track, open, onClose }: TrackSettingsProps) {
       <form onSubmit={handleSubmit}>
         <DialogContent>
           <AudioSelector
-            value={track.url}
+            value={url}
             onChange={handleURLChange}
             onFileName={handleTitleStringChange}
           />
@@ -70,6 +97,8 @@ export function TrackSettings({ track, open, onClose }: TrackSettingsProps) {
           <Button type="submit">Done</Button>
         </DialogActions>
       </form>
-    </Dialog>
+      </Dialog>
+      {mediaDeletion.dialog}
+    </>
   );
 }

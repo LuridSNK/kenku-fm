@@ -23,6 +23,7 @@ import { PlaylistSettings } from "./PlaylistSettings";
 import { addTracks, removePlaylist, Track } from "./playlistsSlice";
 import { PlaylistTracks } from "./PlaylistTracks";
 import { TrackAdd } from "./TrackAdd";
+import { useManagedMediaDeletion } from "../../common/useManagedMediaDeletion";
 
 type PlaylistProps = {
   onPlay: (track: Track) => void;
@@ -34,6 +35,7 @@ export function Playlist({ onPlay }: PlaylistProps) {
   const playlists = useSelector((state: RootState) => state.playlists);
   const { playlistId } = useParams();
   const playlist = playlists.playlists.byId[playlistId];
+  const mediaDeletion = useManagedMediaDeletion();
 
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -64,9 +66,14 @@ export function Playlist({ onPlay }: PlaylistProps) {
   }
 
   function handleDelete() {
-    dispatch(removePlaylist(playlist.id));
-    navigate(-1);
     handleMenuClose();
+    mediaDeletion.requestDeletion(
+      [...items.map((track) => track.url), playlist.background],
+      () => {
+        dispatch(removePlaylist(playlist.id));
+        navigate(-1);
+      },
+    );
   }
 
   function handleTrackPlay(trackId: string) {
@@ -191,6 +198,7 @@ export function Playlist({ onPlay }: PlaylistProps) {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
       />
+      {mediaDeletion.dialog}
     </>
   );
 }

@@ -5,16 +5,12 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { Link } from "@mui/material";
 
-import {
-  getDropURL,
-  encodeFilePath,
-  cleanFileName,
-} from "../../renderer/common/drop";
+import { cleanFileName } from "../../renderer/common/drop";
 import useFileDrop, { FileInfo } from "./useFileDrop";
 
 type AudioSelectorProps = {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, imported?: boolean) => void;
   onFileName: (name: string) => void;
 };
 
@@ -25,31 +21,38 @@ export function AudioSelector({
   onChange,
   onFileName,
 }: AudioSelectorProps) {
-  function handleURLChange(event: React.ChangeEvent<HTMLInputElement>) {
-    onChange(event.target.value);
-  }
+  const onDrop = useCallback(
+    (acceptedFiles: FileInfo[]) => {
+      const file = acceptedFiles[0];
+      if (file) {
+        onChange(file.url, true);
+        onFileName(cleanFileName(file.name));
+      }
+    },
+    [onChange, onFileName]
+  );
 
-  function handleURLDrop(event: React.DragEvent<HTMLInputElement>) {
-    event.preventDefault();
-    const url = getDropURL(event.dataTransfer);
-    if (url) {
-      onChange(url);
-    }
-  }
-
-  const onDrop = useCallback((acceptedFiles: FileInfo[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      onChange(encodeFilePath(file.path));
-      onFileName(cleanFileName(file.name));
-    }
-  }, []);
-
-  const { rootProps, inputProps, isDragging } = useFileDrop({
+  const {
+    rootProps,
+    inputProps,
+    isDragging,
+    importError,
+    clearImportError,
+    importFiles,
+  } = useFileDrop({
     onDrop,
     accept: "audio/*",
     multiple: false,
   });
+  function handleURLChange(event: React.ChangeEvent<HTMLInputElement>) {
+    clearImportError();
+    onChange(event.target.value);
+  }
+
+  async function handleURLDrop(event: React.DragEvent<HTMLInputElement>) {
+    event.preventDefault();
+    await importFiles(event.dataTransfer.files);
+  }
 
   const warning =
     value && !formats.some((format) => value.toLowerCase().endsWith(format));
@@ -71,9 +74,11 @@ export function AudioSelector({
         value={value}
         onChange={handleURLChange}
         onDrop={handleURLDrop}
+        error={Boolean(importError)}
         color={warning ? "warning" : undefined}
         helperText={
-          warning ? (
+          importError ||
+          (warning ? (
             <>
               Unable to verify audio format, this file may not be supported. See{" "}
               <Link
@@ -85,7 +90,7 @@ export function AudioSelector({
               </Link>{" "}
               for more information.
             </>
-          ) : undefined
+          ) : undefined)
         }
       />
       <Button
