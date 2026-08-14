@@ -2,6 +2,8 @@ name: Great Merge Builds
 
 on:
   workflow_dispatch:
+  push:
+    branches: [release/great-merge]
 
 jobs:
   build:
