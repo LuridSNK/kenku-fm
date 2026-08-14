@@ -8,6 +8,7 @@ import { OutputListItems } from "../features/output/OutputListItems";
 import { InputListItems } from "../features/input/InputListItems";
 import { BookmarkListItems } from "../features/bookmarks/BookmarkListItems";
 import { Settings } from "../features/settings/Settings";
+import { DownloadListItems } from "../features/downloads/DownloadListItems";
 
 import { RootState } from "../app/store";
 import { useSelector } from "react-redux";
@@ -89,6 +90,7 @@ export function ActionDrawer() {
                 for more outputs
               </Typography>
             )}
+            <DownloadListItems />
           </Stack>
         </Box>
       </Drawer>

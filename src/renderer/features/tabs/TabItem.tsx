@@ -1,6 +1,7 @@
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import CloseIcon from "@mui/icons-material/CloseRounded";
+import DownloadIcon from "@mui/icons-material/DownloadRounded";
 import VolumeOffIcon from "@mui/icons-material/VolumeOffRounded";
 import VolumeIcon from "@mui/icons-material/VolumeUpRounded";
 import Box from "@mui/material/Box";
@@ -8,7 +9,7 @@ import IconButton from "@mui/material/IconButton";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
-import React from "react";
+import React, { useState } from "react";
 
 import { v4 as uuid } from "uuid";
 
@@ -18,6 +19,7 @@ import { addBookmark, removeBookmark } from "../bookmarks/bookmarksSlice";
 import { setMuted } from "../player/playerSlice";
 import { safeURL } from "./Tabs";
 import { Tab, editTab, removeTab, selectTab } from "./tabsSlice";
+import { canonicalizeYouTubeUrl } from "../../../types/youtubeDownloads";
 
 type TabType = {
   tab: Tab;
@@ -33,16 +35,22 @@ export function TabItem({ tab, selected, allowClose, shadow }: TabType) {
     (state: RootState) => state.bookmarks.bookmarks.byId,
   );
   const dispatch = useDispatch();
+  const [startingDownload, setStartingDownload] = useState(false);
 
   const isBookmarked = Object.values(bookmarks).filter((bookmark) => {
     return bookmark.url === tab.url;
   });
 
   const showMedia = tab.playingMedia > 0;
+  const youtubeUrl = selected ? canonicalizeYouTubeUrl(tab.url) : null;
+  const showDownload = Boolean(youtubeUrl && allowClose);
   const showBookmark = Boolean(safeURL(tab.url) && selected && allowClose);
   const showClose = Boolean(allowClose);
   const shownIcons =
-    Number(showBookmark) + Number(showClose) + Number(showMedia);
+    Number(showDownload) +
+    Number(showBookmark) +
+    Number(showClose) +
+    Number(showMedia);
 
   return (
     <ListItem
@@ -68,6 +76,31 @@ export function TabItem({ tab, selected, allowClose, shadow }: TabType) {
               ) : (
                 <VolumeIcon sx={{ fontSize: "1rem" }} />
               )}
+            </IconButton>
+          )}
+          {showDownload && (
+            <IconButton
+              edge="end"
+              size="small"
+              aria-label="Download YouTube audio"
+              title="Download YouTube audio"
+              disabled={startingDownload}
+              onClick={async () => {
+                if (!youtubeUrl) return;
+                setStartingDownload(true);
+                try {
+                  await window.kenku.enqueueYouTubeDownload({
+                    sourceUrl: youtubeUrl,
+                    title: tab.title,
+                  });
+                } catch (error) {
+                  console.error(error);
+                } finally {
+                  setStartingDownload(false);
+                }
+              }}
+            >
+              <DownloadIcon sx={{ fontSize: "1rem" }} />
             </IconButton>
           )}
           {showBookmark && (
