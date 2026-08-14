@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
@@ -11,7 +11,12 @@ import { Settings } from "../features/settings/Settings";
 import { DownloadListItems } from "../features/downloads/DownloadListItems";
 
 import { RootState } from "../app/store";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  setDisconnected,
+  setReady,
+} from "../features/connection/connectionSlice";
+import { setGuilds, setOutput } from "../features/output/outputSlice";
 
 import icon from "../../assets/icon.svg";
 import { useHideScrollbar } from "./useHideScrollbar";
@@ -23,6 +28,24 @@ export function ActionDrawer() {
   const settings = useSelector((state: RootState) => state.settings);
   const connection = useSelector((state: RootState) => state.connection);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    window.kenku.on("DISCORD_READY", (args) => {
+      dispatch(setReady(args[0]));
+    });
+    window.kenku.on("DISCORD_DISCONNECTED", () => {
+      dispatch(setDisconnected());
+      dispatch(setGuilds([]));
+      dispatch(setOutput("local"));
+      window.kenku.setLoopback(true);
+    });
+
+    return () => {
+      window.kenku.removeAllListeners("DISCORD_READY");
+      window.kenku.removeAllListeners("DISCORD_DISCONNECTED");
+    };
+  }, [dispatch]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const hideScrollbar = useHideScrollbar(scrollRef);

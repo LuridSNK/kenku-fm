@@ -23,9 +23,7 @@ import FormHelperText from "@mui/material/FormHelperText";
 
 import { RootState } from "../../app/store";
 import { useSelector, useDispatch } from "react-redux";
-import { setStatus } from "../connection/connectionSlice";
 import {
-  setDiscordToken,
   setExternalInputsEnabled,
   setMultipleInputsEnabled,
   setMultipleOutputsEnabled,
@@ -36,6 +34,7 @@ import {
   setStreamingMode,
   StreamingMode,
 } from "./settingsSlice";
+import { DiscordSettings } from "./DiscordSettings";
 import { showWindowControls } from "../../common/showWindowControls";
 
 type SettingsProps = {
@@ -44,47 +43,8 @@ type SettingsProps = {
 };
 
 export function Settings({ open, onClose }: SettingsProps) {
-  const connection = useSelector((state: RootState) => state.connection);
   const settings = useSelector((state: RootState) => state.settings);
   const dispatch = useDispatch();
-
-  function handleDiscordTokenChange(e: React.ChangeEvent<HTMLInputElement>) {
-    dispatch(setDiscordToken(e.target.value));
-  }
-
-  function handleDiscordConnect() {
-    if (connection.status === "disconnected") {
-      dispatch(setStatus("connecting"));
-      window.kenku.connect(settings.discordToken);
-    } else {
-      window.kenku.disconnect();
-    }
-  }
-
-  useEffect(() => {
-    if (settings.discordToken) {
-      dispatch(setStatus("connecting"));
-      window.kenku.connect(settings.discordToken);
-    }
-
-    return () => {
-      window.kenku.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
-    window.kenku.on("DISCORD_READY", () => {
-      dispatch(setStatus("ready"));
-    });
-    window.kenku.on("DISCORD_DISCONNECTED", () => {
-      dispatch(setStatus("disconnected"));
-    });
-
-    return () => {
-      window.kenku.removeAllListeners("DISCORD_READY");
-      window.kenku.removeAllListeners("DISCORD_DISCONNECTED");
-    };
-  }, [dispatch]);
 
   const [mediaRoot, setMediaRoot] = useState("");
   const [mediaRootLoading, setMediaRootLoading] = useState(false);
@@ -92,9 +52,7 @@ export function Settings({ open, onClose }: SettingsProps) {
   const [mediaRootError, setMediaRootError] = useState("");
 
   useEffect(() => {
-    if (!open) {
-      return;
-    }
+    if (!open) return;
 
     let active = true;
     setMediaRootLoading(true);
@@ -117,9 +75,7 @@ export function Settings({ open, onClose }: SettingsProps) {
     setMediaRootError("");
     try {
       const root = await window.kenku.chooseMediaRoot();
-      if (root !== null) {
-        setMediaRoot(root);
-      }
+      if (root !== null) setMediaRoot(root);
     } catch {
       setMediaRootError("Could not change media folder.");
     } finally {
@@ -159,53 +115,7 @@ export function Settings({ open, onClose }: SettingsProps) {
     </Stack>
   );
 
-  const discordSettings = (
-    <Stack spacing={1}>
-      <TextField
-        autoFocus
-        margin="dense"
-        size="small"
-        id="token"
-        label="Token"
-        type="password"
-        fullWidth
-        variant="standard"
-        autoComplete="off"
-        InputLabelProps={{
-          shrink: true,
-        }}
-        value={settings.discordToken}
-        onChange={handleDiscordTokenChange}
-        disabled={connection.status !== "disconnected"}
-        helperText="Enter your bot's token"
-      />
-      <Button
-        disabled={connection.status === "connecting" || !settings.discordToken}
-        onClick={handleDiscordConnect}
-        fullWidth
-        variant="outlined"
-        size="small"
-      >
-        {connection.status === "connecting" ? (
-          <CircularProgress size={24} />
-        ) : connection.status === "ready" ? (
-          "Disconnect"
-        ) : (
-          "Connect"
-        )}
-      </Button>
-      <Link
-        href="https://kenku.fm/docs/getting-a-discord-token"
-        variant="caption"
-        textAlign="center"
-        target="_blank"
-        rel="noopener noreferrer"
-        py={2}
-      >
-        Where do I get my token?
-      </Link>
-    </Stack>
-  );
+  const discordSettings = <DiscordSettings />;
 
   function handleRemoteToggle() {
     const enabled = !settings.remoteEnabled;

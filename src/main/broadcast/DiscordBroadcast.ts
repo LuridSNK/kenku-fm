@@ -3,6 +3,7 @@ import { ChannelType, Client, Events, GatewayIntentBits } from "discord.js";
 import {
   createAudioPlayer,
   getVoiceConnection,
+  getVoiceConnections,
   joinVoiceChannel,
   NoSubscriberBehavior,
 } from "@discordjs/voice";
@@ -44,29 +45,40 @@ export class DiscordBroadcast {
     ipcMain.off("DISCORD_DISCONNECT", this._handleDisconnect);
     ipcMain.off("DISCORD_JOIN_CHANNEL", this._handleJoinChannel);
     ipcMain.off("DISCORD_LEAVE_CHANNEL", this._handleLeaveChannel);
-    this.client?.destroy();
-    this.client = undefined;
+    this._disconnect();
   }
 
-  _handleConnect = async (event: Electron.IpcMainEvent, token: string) => {
+  _disconnect = () => {
+    for (const connection of getVoiceConnections().values()) {
+      connection.destroy();
+    }
+    this.client?.destroy();
+    this.client = undefined;
+  };
+
+  _handleConnect = async (
+    event: Electron.IpcMainEvent,
+    profileId: string,
+    token: string,
+  ) => {
+    this._disconnect();
+    event.reply("DISCORD_GUILDS", []);
+    event.reply("DISCORD_CHANNEL_JOINED", "local");
+
     if (!token) {
       event.reply("DISCORD_DISCONNECTED");
       event.reply("ERROR", "Error connecting to bot: Invalid token");
       return;
     }
-    if (this.client) {
-      this.client.destroy();
-      this.client = undefined;
-    }
 
-    try {
-      this.client = new Client({
-        intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
-      });
-      this.client.once(Events.ClientReady, async () => {
-        event.reply("DISCORD_READY");
-        event.reply("MESSAGE", "Connected");
-        const rawGuilds = await this.client.guilds.fetch();
+    const client = new Client({
+      intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
+    });
+    this.client = client;
+
+    client.once(Events.ClientReady, async () => {
+      try {
+        const rawGuilds = await client.guilds.fetch();
         const guilds: Guild[] = await Promise.all(
           rawGuilds.map(async (baseGuild) => {
             const guild = await baseGuild.fetch();
@@ -91,25 +103,46 @@ export class DiscordBroadcast {
             };
           }),
         );
+        if (this.client !== client) {
+          return;
+        }
         event.reply("DISCORD_GUILDS", guilds);
-      });
-      this.client.on("error", (err) => {
-        event.reply("DISCORD_DISCONNECTED");
-        event.reply("ERROR", `Error connecting to bot: ${err.message}`);
-      });
-      await this.client.login(token);
+        event.reply("DISCORD_READY", profileId);
+        event.reply("MESSAGE", "Connected");
+      } catch (err) {
+        this._handleConnectionError(event, client, err);
+      }
+    });
+    client.on("error", (err) => {
+      this._handleConnectionError(event, client, err);
+    });
+
+    try {
+      await client.login(token);
     } catch (err) {
-      event.reply("DISCORD_DISCONNECTED");
-      event.reply("ERROR", `Error connecting to bot: ${err.message}`);
+      this._handleConnectionError(event, client, err);
     }
   };
 
+  _handleConnectionError = (
+    event: Electron.IpcMainEvent,
+    client: Client,
+    err: unknown,
+  ) => {
+    if (this.client !== client) {
+      return;
+    }
+    this._disconnect();
+    const message = err instanceof Error ? err.message : String(err);
+    event.reply("DISCORD_DISCONNECTED");
+    event.reply("ERROR", `Error connecting to bot: ${message}`);
+  };
+
   _handleDisconnect = async (event: Electron.IpcMainEvent) => {
+    this._disconnect();
     event.reply("DISCORD_DISCONNECTED");
     event.reply("DISCORD_GUILDS", []);
     event.reply("DISCORD_CHANNEL_JOINED", "local");
-    this.client.destroy();
-    this.client = undefined;
   };
 
   _handleJoinChannel = async (
@@ -158,10 +191,9 @@ export class DiscordBroadcast {
     event: Electron.IpcMainEvent,
     channelId: string,
   ) => {
-    const channel = await this.client.channels.fetch(channelId);
-    if (channel.type === ChannelType.GuildVoice) {
-      const connection = getVoiceConnection(channel.guild.id);
-      connection.destroy();
+    const channel = await this.client?.channels.fetch(channelId);
+    if (channel?.type === ChannelType.GuildVoice) {
+      getVoiceConnection(channel.guild.id)?.destroy();
     }
     event.reply("DISCORD_CHANNEL_LEFT", channelId);
   };

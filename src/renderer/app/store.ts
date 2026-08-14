@@ -31,15 +31,6 @@ const rootReducer = combineReducers({
   input: inputReducer,
 });
 
-type LegacyBookmarksState = Omit<RootState, "bookmarks"> & {
-  bookmarks: {
-    bookmarks: {
-      byId: RootState["bookmarks"]["bookmarks"]["byId"];
-      allIds: string[];
-    };
-  };
-};
-
 const migrations = {
   2: (state: RootState): RootState => {
     return {
@@ -66,19 +57,38 @@ const migrations = {
       },
     };
   },
-  // v1.3 - Add named bookmark groups
-  5: (state: LegacyBookmarksState): RootState => {
+  // v1.3 - Bookmark groups and Discord profiles converged from separate branches.
+  5: (state: RootState): RootState => state,
+  6: (state: RootState): RootState => {
+    const legacyBookmarks = state.bookmarks as typeof state.bookmarks & {
+      bookmarks: typeof state.bookmarks.bookmarks & { allIds?: string[] };
+    };
+    const legacySettings = state.settings as typeof state.settings & {
+      discordToken?: string;
+    };
+    const { discordToken, ...settings } = legacySettings;
+    const migratedProfile = discordToken
+      ? { id: "migrated-discord-bot", name: "Discord Bot", token: discordToken }
+      : null;
+
     return {
       ...state,
-      bookmarks: {
-        bookmarks: {
-          byId: state.bookmarks.bookmarks.byId,
-          ungroupedIds: state.bookmarks.bookmarks.allIds,
-        },
-        groups: {
-          byId: {},
-          allIds: [],
-        },
+      bookmarks: legacyBookmarks.groups
+        ? state.bookmarks
+        : {
+            bookmarks: {
+              byId: legacyBookmarks.bookmarks.byId,
+              ungroupedIds: legacyBookmarks.bookmarks.allIds ?? [],
+            },
+            groups: { byId: {}, allIds: [] },
+          },
+      settings: {
+        ...settings,
+        discordProfiles:
+          settings.discordProfiles ??
+          (migratedProfile ? [migratedProfile] : []),
+        selectedDiscordProfileId:
+          settings.selectedDiscordProfileId ?? migratedProfile?.id ?? null,
       },
     };
   },
@@ -86,7 +96,7 @@ const migrations = {
 
 const persistConfig = {
   key: "root",
-  version: 5,
+  version: 6,
   storage,
   whitelist: ["bookmarks", "settings"],
   migrate: createMigrate(migrations, { debug: false }),
