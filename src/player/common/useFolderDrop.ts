@@ -39,6 +39,18 @@ export type Directory = {
   audioFiles: AudioFile[];
 };
 
+export type FolderDrop = {
+  dragging: boolean;
+  containerListeners: {
+    onDragEnter: React.DragEventHandler<HTMLDivElement>;
+  };
+  overlayListeners: {
+    onDragLeave: React.DragEventHandler<HTMLDivElement>;
+    onDragOver: React.DragEventHandler<HTMLDivElement>;
+    onDrop: React.DragEventHandler<HTMLDivElement>;
+  };
+};
+
 export type Directories = Record<string, Directory>;
 
 async function getFile(entry: FileSystemFileEntry): Promise<File> {
@@ -99,7 +111,9 @@ async function getDirectories(
   return directories;
 }
 
-export function useFolderDrop(onDrop: (directories: Directories) => void) {
+export function useFolderDrop(
+  onDrop: (directories: Directories) => void
+): FolderDrop {
   const [dragging, setDragging] = useState(false);
   function handleDragEnter(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();

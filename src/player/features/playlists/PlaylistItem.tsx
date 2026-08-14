@@ -1,14 +1,10 @@
 import React from "react";
-import Card from "@mui/material/Card";
-import CardMedia from "@mui/material/CardMedia";
-import Typography from "@mui/material/Typography";
-import CardActionArea from "@mui/material/CardActionArea";
 import PlayArrowIcon from "@mui/icons-material/PlayArrowRounded";
 import PauseIcon from "@mui/icons-material/PauseRounded";
 import IconButton from "@mui/material/IconButton";
-import Box from "@mui/material/Box";
 
-import { backgrounds, isBackground } from "../../backgrounds";
+import { getBackgroundSource, isBackground } from "../../backgrounds";
+import { MediaTile } from "../../common/MediaTile";
 
 import { Playlist, Track } from "./playlistsSlice";
 import { useDispatch, useSelector } from "react-redux";
@@ -39,9 +35,8 @@ export function PlaylistItem({
 
   const dispatch = useDispatch();
 
-  const image = isBackground(playlist.background)
-    ? backgrounds[playlist.background]
-    : playlist.background;
+  const defaultBackground = isBackground(playlist.background);
+  const image = getBackgroundSource(playlist.background);
 
   function handlePlay() {
     if (queue?.playlistId === playlist.id) {
@@ -61,55 +56,20 @@ export function PlaylistItem({
   }
 
   return (
-    <Card sx={{ position: "relative" }}>
-      <CardActionArea onClick={() => onSelect(playlist.id)}>
-        <CardMedia
-          component="img"
-          height="200px"
-          image={image}
-          alt={"Background"}
-          sx={{ pointerEvents: "none" }}
-        />
-      </CardActionArea>
-      <Box
-        sx={{
-          backgroundImage:
-            "linear-gradient(0deg, #00000088 30%, #ffffff44 100%)",
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          pointerEvents: "none",
-        }}
-      />
-      <Box
-        sx={{
-          padding: 2,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          position: "absolute",
-          bottom: 0,
-          width: "100%",
-          pointerEvents: "none",
-        }}
-      >
-        <Typography variant="h5" component="div">
-          {playlist.title}
-        </Typography>
+    <MediaTile
+      title={playlist.title}
+      image={image}
+      imageHeight={defaultBackground ? 140 : undefined}
+      onSelect={() => onSelect(playlist.id)}
+      action={
         <IconButton
-          aria-label="play/pause"
-          sx={{ pointerEvents: "all" }}
+          size="small"
+          aria-label={playing ? "pause" : "play"}
           onClick={handlePlay}
         >
-          {playing ? (
-            <PauseIcon sx={{ fontSize: "2rem" }} />
-          ) : (
-            <PlayArrowIcon sx={{ fontSize: "2rem" }} />
-          )}
+          {playing ? <PauseIcon /> : <PlayArrowIcon />}
         </IconButton>
-      </Box>
-    </Card>
+      }
+    />
   );
 }

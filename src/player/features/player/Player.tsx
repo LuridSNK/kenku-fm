@@ -26,6 +26,7 @@ export function Player({
         bottom: 16,
         left: "50%",
         transform: "translateX(-50%)",
+        zIndex: 2,
       }}
       maxWidth="md"
     >

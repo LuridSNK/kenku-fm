@@ -14,7 +14,7 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
 
-import { backgrounds } from "../backgrounds";
+import { backgrounds, getBackgroundSource } from "../backgrounds";
 import useFileDrop, { FileInfo } from "./useFileDrop";
 
 const ImageListButton = styled("img")({
@@ -36,7 +36,7 @@ export function ImageSelector({ value, onChange }: ImageSelectorProps) {
     value.startsWith("http") ||
     value.startsWith("kenku-media://");
   const [imageType, setImageType] = useState(
-    hasCustomImage ? "custom" : "default"
+    value === "" ? "none" : hasCustomImage ? "custom" : "default",
   );
 
   const onDrop = useCallback(
@@ -46,7 +46,7 @@ export function ImageSelector({ value, onChange }: ImageSelectorProps) {
         onChange(file.url, true);
       }
     },
-    [onChange]
+    [onChange],
   );
 
   const {
@@ -135,7 +135,9 @@ export function ImageSelector({ value, onChange }: ImageSelectorProps) {
           </Typography>
         )}
       </Button>
-      {hasCustomImage && <ImageListButton src={value} alt="preview" />}
+      {hasCustomImage && (
+        <ImageListButton src={getBackgroundSource(value)} alt="preview" />
+      )}
     </Box>
   );
 
@@ -150,34 +152,38 @@ export function ImageSelector({ value, onChange }: ImageSelectorProps) {
         exclusive
         fullWidth
         size="small"
-        onChange={(_, value) => {
-          if (value) {
-            clearImportError();
-            onChange("");
-            setImageType(value);
-          }
+        onChange={(_, nextImageType) => {
+          if (!nextImageType) return;
+          clearImportError();
+          setImageType(nextImageType);
+          onChange(
+            nextImageType === "default" ? Object.keys(backgrounds)[0] : "",
+          );
         }}
         aria-labelledby="bg-image"
       >
+        <ToggleButton value="none">None</ToggleButton>
         <ToggleButton value="default">Default</ToggleButton>
         <ToggleButton value="custom">Custom</ToggleButton>
       </ToggleButtonGroup>
-      <Box
-        sx={{
-          maxWidth: 500,
-          width: "100%",
-          height: "200px",
-          bgcolor: "rgba(0, 0, 0, 0.16)",
-          borderRadius: "16px",
-          p: 1,
-          pr: 0,
-          mt: 1,
-        }}
-      >
-        <Box sx={{ overflowY: "scroll", height: "100%" }}>
-          {imageType === "default" ? imageSelector : imageImporter}
+      {imageType !== "none" && (
+        <Box
+          sx={{
+            maxWidth: 500,
+            width: "100%",
+            height: "200px",
+            bgcolor: "rgba(0, 0, 0, 0.16)",
+            borderRadius: "16px",
+            p: 1,
+            pr: 0,
+            mt: 1,
+          }}
+        >
+          <Box sx={{ overflowY: "scroll", height: "100%" }}>
+            {imageType === "default" ? imageSelector : imageImporter}
+          </Box>
         </Box>
-      </Box>
+      )}
     </FormGroup>
   );
 }

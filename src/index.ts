@@ -3,10 +3,12 @@ import {
   app,
   BrowserWindow,
   components,
+  ipcMain,
+  net,
+  powerSaveBlocker,
+  protocol,
   session,
   shell,
-  ipcMain,
-  powerSaveBlocker,
 } from "electron";
 import "./menu";
 import icon from "./assets/icon.png";
@@ -23,6 +25,13 @@ import { registerYouTubeDownloads } from "./main/youtubeDownloads";
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 registerMediaLibraryScheme();
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "kenku-image",
+    privileges: { standard: true, secure: true },
+  },
+]);
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 let window: BrowserWindow | null = null;
@@ -130,6 +139,13 @@ if (!hasSingleInstanceLock) {
       hasWidevineError = true;
       console.error("components failed to load:", JSON.stringify(e, null, 2));
     }
+
+    protocol.handle("kenku-image", (request) => {
+      const source = new URL(request.url).searchParams.get("source");
+      return source?.startsWith("file:")
+        ? net.fetch(source)
+        : new Response("Invalid image source", { status: 400 });
+    });
 
     window = createWindow();
 

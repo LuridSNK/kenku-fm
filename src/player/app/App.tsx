@@ -11,12 +11,11 @@ import { usePlaylistPlayback } from "../features/playlists/usePlaylistPlayback";
 import { PlaylistMediaSession } from "../features/playlists/PlaylistMediaSession";
 import { PlaylistRemote } from "../features/playlists/PlaylistRemote";
 import { PlaylistPlaybackSync } from "../features/playlists/PlaylistPlaybackSync";
-import { Playlists } from "../features/playlists/Playlists";
 import { Playlist } from "../features/playlists/Playlist";
 
 import "../../renderer/app/App.css";
 import { Home } from "../features/home/Home";
-import { Soundboards } from "../features/soundboards/Soundboards";
+
 import { Soundboard } from "../features/soundboards/Soundboard";
 import { useSoundboardPlayback } from "../features/soundboards/useSoundboardPlayback";
 import { SoundboardRemote } from "../features/soundboards/SoundboardRemote";
@@ -54,16 +53,8 @@ export function App() {
           }
         />
         <Route
-          path="playlists"
-          element={<Playlists onPlay={playlist.play} />}
-        />
-        <Route
           path="playlists/:playlistId"
           element={<Playlist onPlay={playlist.play} />}
-        />
-        <Route
-          path="soundboards"
-          element={<Soundboards onPlay={soundboard.play} />}
         />
         <Route
           path="soundboards/:soundboardId"
